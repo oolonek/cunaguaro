@@ -1,0 +1,49 @@
+flowchart LR
+    datasets["Dataset item"]
+    doi["DOI literal"]
+    taxa["Taxon item (QID)"]
+    scientific_name["Scientific name literal"]
+    col_id["Catalogue of Life ID literal"]
+    chemicals["Matched chemical item (QID)"]
+    inchikey["Full InChIKey literal"]
+    cid["PubChem CID literal"]
+    sample_rows["Sample row item"]
+    spectrum_files["Raw spectrum item"]
+    processed_spectra["Processed spectrum item"]
+    taxon_resolutions["Taxon resolution record"]
+    annotation_runs["Annotation run item"]
+    annotation_features["Annotation feature item"]
+    annotation_hits["Candidate hit item"]
+    chemical_lookups["Chemical lookup record"]
+    chemical_entities["Chemical match record"]
+    chemical_pubchem_ids["CID source record"]
+    datasets -->|P356| doi
+    taxa -->|P225| scientific_name
+    taxa -->|P10585| col_id
+    chemicals -->|P235| inchikey
+    chemicals -->|P662| cid
+    sample_rows -->|"proposed:source dataset"| datasets
+    sample_rows -->|"proposed:source taxon"| taxa
+    spectrum_files -->|"proposed:source sample"| sample_rows
+    processed_spectra -->|"proposed:source raw spectrum"| spectrum_files
+    taxon_resolutions -->|"proposed:resolved taxon"| taxa
+    annotation_runs -->|"proposed:source raw spectrum"| spectrum_files
+    annotation_features -->|"proposed:annotation run"| annotation_runs
+    annotation_hits -->|"proposed:feature"| annotation_features
+    annotation_hits -->|"proposed:candidate (not presence)"| chemicals
+    chemical_lookups -->|"proposed:queried key"| inchikey
+    chemical_entities -->|"proposed:matched chemical"| chemicals
+    chemical_pubchem_ids -->|"proposed:recorded CID"| cid
+    click datasets "#datasets" "View datasets model"
+    click taxa "#taxa" "View taxa model"
+    click chemicals "#wikidata-statements" "View chemicals model"
+    click sample_rows "#sample_rows" "View sample_rows model"
+    click spectrum_files "#spectrum_files" "View spectrum_files model"
+    click processed_spectra "#processed_spectra" "View processed_spectra model"
+    click taxon_resolutions "#taxon_resolutions" "View taxon_resolutions model"
+    click annotation_runs "#annotation_runs" "View annotation_runs model"
+    click annotation_features "#annotation_features" "View annotation_features model"
+    click annotation_hits "#annotation_hits" "View annotation_hits model"
+    click chemical_lookups "#chemical_lookups" "View chemical_lookups model"
+    click chemical_entities "#chemical_entities" "View chemical_entities model"
+    click chemical_pubchem_ids "#chemical_pubchem_ids" "View chemical_pubchem_ids model"

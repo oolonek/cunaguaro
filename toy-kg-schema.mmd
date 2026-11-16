@@ -1,0 +1,105 @@
+flowchart LR
+    dataset["Local Dataset"]
+    dataset_class["urn:mato:term:Dataset (class)"]
+    doi["DOI literal"]
+    wd_dataset["Existing dataset QID (if verified)"]
+    sample["Local SampleRecord"]
+    sample_id["Sample identifier literal (not unique)"]
+    taxon["Verified taxon QID"]
+    matched_organism["Recorded reference organism QID (if valid)"]
+    taxon_name["Scientific name literal"]
+    col_id["Catalogue of Life ID literal"]
+    acquisition["Local Acquisition (MS run)"]
+    raw["Local RawFile (raw input)"]
+    processing["Local Processing (Picoto)"]
+    audit["Local FeatureAuditFile (audit TSV)"]
+    feature["Local Feature (accepted audit row)"]
+    mgf["Local ProcessedSpectrumFile (MGF)"]
+    query["Local QuerySpectrum (MGF block)"]
+    run["Local AnnotationRun"]
+    annotated["Local AnnotationFeature (run-scoped)"]
+    hit["Local CandidateHit (not presence)"]
+    reference["Local ReferenceSpectrum"]
+    chemical["Verified chemical QID (one full-key match)"]
+    cid["PubChem CID literal"]
+    inchikey["Full InChIKey literal"]
+    mz["Precursor m/z literal"]
+    rt["Retention time (seconds) literal"]
+    score["Score / rank literal"]
+    peak_count["Matched peak count literal"]
+    support["Taxonomic support literal"]
+    version["Scoring tool version literal"]
+    status["Outcome status literal"]
+    dataset -->|"rdf:type"| dataset_class
+    dataset -->|"wdt:P356"| doi
+    wd_dataset -->|"wdt:P356"| doi
+    taxon -->|"wdt:P225"| taxon_name
+    taxon -->|"wdt:P10585"| col_id
+    chemical -->|"wdt:P235"| inchikey
+    chemical -->|"wdt:P662"| cid
+    dataset -->|"hasSampleRecord"| sample
+    sample -->|"sampleIdentifier"| sample_id
+    sample -->|"reportedSourceTaxon"| taxon
+    sample -->|"hasAcquisition"| acquisition
+    acquisition -->|"prov:used"| sample
+    acquisition -->|"rawFile"| raw
+    raw -->|"prov:wasGeneratedBy"| acquisition
+    processing -->|"prov:used"| raw
+    audit -->|"prov:wasGeneratedBy"| processing
+    mgf -->|"prov:wasGeneratedBy"| processing
+    processing -->|"featureAudit"| audit
+    processing -->|"processedSpectrumFile"| mgf
+    processing -->|"hasFeature"| feature
+    feature -->|"retentionTimeSeconds"| rt
+    feature -->|"precursorMz"| mz
+    feature -->|"querySpectrum"| query
+    query -->|"derivedFrom"| mgf
+    run -->|"prov:used"| mgf
+    run -->|"scoringTaxon"| taxon
+    run -->|"matcherVersion"| version
+    run -->|"annotationFeature"| annotated
+    annotated -->|"feature"| feature
+    run -->|"hasCandidateHit"| hit
+    hit -->|"prov:wasGeneratedBy"| run
+    hit -->|"feature"| feature
+    hit -->|"referenceSpectrum"| reference
+    hit -->|"candidateChemical"| chemical
+    hit -->|"spectralScore"| score
+    hit -->|"taxonomicScore"| score
+    hit -->|"combinedScore"| score
+    hit -->|"rank"| score
+    hit -->|"matchedOrganism"| matched_organism
+    hit -->|"matchedPeakCount"| peak_count
+    hit -->|"taxonomicSupport"| support
+    run -->|"status"| status
+    click dataset "toy-kg-schema.md#dataset" "View dataset mapping"
+    click dataset_class "toy-kg-schema.md#dataset" "View dataset_class mapping"
+    click doi "toy-kg-schema.md#wikidata-alignment" "View doi mapping"
+    click wd_dataset "toy-kg-schema.md#wikidata-alignment" "View wd_dataset mapping"
+    click sample "toy-kg-schema.md#samplerecord" "View sample mapping"
+    click sample_id "toy-kg-schema.md#samplerecord" "View sample_id mapping"
+    click taxon "toy-kg-schema.md#wikidata-alignment" "View taxon mapping"
+    click matched_organism "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View matched_organism mapping"
+    click taxon_name "toy-kg-schema.md#wikidata-alignment" "View taxon_name mapping"
+    click col_id "toy-kg-schema.md#wikidata-alignment" "View col_id mapping"
+    click acquisition "toy-kg-schema.md#acquisition" "View acquisition mapping"
+    click raw "toy-kg-schema.md#rawfile" "View raw mapping"
+    click processing "toy-kg-schema.md#processing" "View processing mapping"
+    click audit "toy-kg-schema.md#featureauditfile" "View audit mapping"
+    click feature "toy-kg-schema.md#feature" "View feature mapping"
+    click mgf "toy-kg-schema.md#processedspectrumfile" "View mgf mapping"
+    click query "toy-kg-schema.md#queryspectrum" "View query mapping"
+    click run "toy-kg-schema.md#annotationrun" "View run mapping"
+    click annotated "toy-kg-schema.md#annotationfeature" "View annotated mapping"
+    click hit "toy-kg-schema.md#candidatehit" "View hit mapping"
+    click reference "toy-kg-schema.md#referencespectrum" "View reference mapping"
+    click chemical "toy-kg-schema.md#wikidata-alignment" "View chemical mapping"
+    click cid "toy-kg-schema.md#wikidata-alignment" "View cid mapping"
+    click inchikey "toy-kg-schema.md#wikidata-alignment" "View inchikey mapping"
+    click mz "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View mz mapping"
+    click rt "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View rt mapping"
+    click score "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View score mapping"
+    click peak_count "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View peak_count mapping"
+    click support "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View support mapping"
+    click version "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View version mapping"
+    click status "toy-kg-schema.md#local-subjectpredicateobject-mapping" "View status mapping"

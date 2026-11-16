@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1162" role="img" aria-label="Wikidata statement schema: subjects, predicates and objects">
+<style>text{fill:currentColor;font:14px sans-serif} .predicate{font-weight:bold} rect{fill:none;pointer-events:all;stroke:var(--border,currentColor);stroke-width:1.5} path{fill:none;stroke:var(--muted,currentColor);stroke-width:2} a:hover rect{stroke:var(--accent,currentColor);stroke-width:3}</style>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" style="fill:currentColor;stroke:none"/></marker></defs>
+<path d="M320 44 H350 M596 44 H618" marker-end="url(#arrow)"/>
+<a href="#object-0"><g id="subject-0"><title>Dataset item → DOI literal</title><rect x="10" y="20" width="310" height="48" rx="7"/><text x="22" y="49">Dataset item</text></g></a>
+<text x="364" y="49" class="predicate">P356</text>
+<a href="#subject-0"><g id="object-0"><title>DOI literal ← Dataset item</title><rect x="620" y="20" width="330" height="48" rx="7"/><text x="632" y="49">DOI literal</text></g></a>
+<path d="M320 110 H350 M596 110 H618" marker-end="url(#arrow)"/>
+<a href="#object-1"><g id="subject-1"><title>Taxon item (QID) → Scientific name literal</title><rect x="10" y="86" width="310" height="48" rx="7"/><text x="22" y="115">Taxon item (QID)</text></g></a>
+<text x="364" y="115" class="predicate">P225</text>
+<a href="#subject-1"><g id="object-1"><title>Scientific name literal ← Taxon item (QID)</title><rect x="620" y="86" width="330" height="48" rx="7"/><text x="632" y="115">Scientific name literal</text></g></a>
+<path d="M320 176 H350 M596 176 H618" marker-end="url(#arrow)"/>
+<a href="#object-2"><g id="subject-2"><title>Taxon item (QID) → Catalogue of Life ID literal</title><rect x="10" y="152" width="310" height="48" rx="7"/><text x="22" y="181">Taxon item (QID)</text></g></a>
+<text x="364" y="181" class="predicate">P10585</text>
+<a href="#subject-2"><g id="object-2"><title>Catalogue of Life ID literal ← Taxon item (QID)</title><rect x="620" y="152" width="330" height="48" rx="7"/><text x="632" y="181">Catalogue of Life ID literal</text></g></a>
+<path d="M320 242 H350 M596 242 H618" marker-end="url(#arrow)"/>
+<a href="#object-3"><g id="subject-3"><title>Matched chemical item (QID) → Full InChIKey literal</title><rect x="10" y="218" width="310" height="48" rx="7"/><text x="22" y="247">Matched chemical item (QID)</text></g></a>
+<text x="364" y="247" class="predicate">P235</text>
+<a href="#subject-3"><g id="object-3"><title>Full InChIKey literal ← Matched chemical item (QID)</title><rect x="620" y="218" width="330" height="48" rx="7"/><text x="632" y="247">Full InChIKey literal</text></g></a>
+<path d="M320 308 H350 M596 308 H618" marker-end="url(#arrow)"/>
+<a href="#object-4"><g id="subject-4"><title>Matched chemical item (QID) → PubChem CID literal</title><rect x="10" y="284" width="310" height="48" rx="7"/><text x="22" y="313">Matched chemical item (QID)</text></g></a>
+<text x="364" y="313" class="predicate">P662</text>
+<a href="#subject-4"><g id="object-4"><title>PubChem CID literal ← Matched chemical item (QID)</title><rect x="620" y="284" width="330" height="48" rx="7"/><text x="632" y="313">PubChem CID literal</text></g></a>
+<path d="M320 374 H350 M596 374 H618" marker-end="url(#arrow)"/>
+<a href="#object-5"><g id="subject-5"><title>Sample row item → Dataset item</title><rect x="10" y="350" width="310" height="48" rx="7"/><text x="22" y="379">Sample row item</text></g></a>
+<text x="364" y="379" class="predicate">proposed:source dataset</text>
+<a href="#subject-5"><g id="object-5"><title>Dataset item ← Sample row item</title><rect x="620" y="350" width="330" height="48" rx="7"/><text x="632" y="379">Dataset item</text></g></a>
+<path d="M320 440 H350 M596 440 H618" marker-end="url(#arrow)"/>
+<a href="#object-6"><g id="subject-6"><title>Sample row item → Taxon item (QID)</title><rect x="10" y="416" width="310" height="48" rx="7"/><text x="22" y="445">Sample row item</text></g></a>
+<text x="364" y="445" class="predicate">proposed:source taxon</text>
+<a href="#subject-6"><g id="object-6"><title>Taxon item (QID) ← Sample row item</title><rect x="620" y="416" width="330" height="48" rx="7"/><text x="632" y="445">Taxon item (QID)</text></g></a>
+<path d="M320 506 H350 M596 506 H618" marker-end="url(#arrow)"/>
+<a href="#object-7"><g id="subject-7"><title>Raw spectrum item → Sample row item</title><rect x="10" y="482" width="310" height="48" rx="7"/><text x="22" y="511">Raw spectrum item</text></g></a>
+<text x="364" y="511" class="predicate">proposed:source sample</text>
+<a href="#subject-7"><g id="object-7"><title>Sample row item ← Raw spectrum item</title><rect x="620" y="482" width="330" height="48" rx="7"/><text x="632" y="511">Sample row item</text></g></a>
+<path d="M320 572 H350 M596 572 H618" marker-end="url(#arrow)"/>
+<a href="#object-8"><g id="subject-8"><title>Processed spectrum item → Raw spectrum item</title><rect x="10" y="548" width="310" height="48" rx="7"/><text x="22" y="577">Processed spectrum item</text></g></a>
+<text x="364" y="577" class="predicate">proposed:source raw spectrum</text>
+<a href="#subject-8"><g id="object-8"><title>Raw spectrum item ← Processed spectrum item</title><rect x="620" y="548" width="330" height="48" rx="7"/><text x="632" y="577">Raw spectrum item</text></g></a>
+<path d="M320 638 H350 M596 638 H618" marker-end="url(#arrow)"/>
+<a href="#object-9"><g id="subject-9"><title>Taxon resolution record → Taxon item (QID)</title><rect x="10" y="614" width="310" height="48" rx="7"/><text x="22" y="643">Taxon resolution record</text></g></a>
+<text x="364" y="643" class="predicate">proposed:resolved taxon</text>
+<a href="#subject-9"><g id="object-9"><title>Taxon item (QID) ← Taxon resolution record</title><rect x="620" y="614" width="330" height="48" rx="7"/><text x="632" y="643">Taxon item (QID)</text></g></a>
+<path d="M320 704 H350 M596 704 H618" marker-end="url(#arrow)"/>
+<a href="#object-10"><g id="subject-10"><title>Annotation run item → Raw spectrum item</title><rect x="10" y="680" width="310" height="48" rx="7"/><text x="22" y="709">Annotation run item</text></g></a>
+<text x="364" y="709" class="predicate">proposed:source raw spectrum</text>
+<a href="#subject-10"><g id="object-10"><title>Raw spectrum item ← Annotation run item</title><rect x="620" y="680" width="330" height="48" rx="7"/><text x="632" y="709">Raw spectrum item</text></g></a>
+<path d="M320 770 H350 M596 770 H618" marker-end="url(#arrow)"/>
+<a href="#object-11"><g id="subject-11"><title>Annotation feature item → Annotation run item</title><rect x="10" y="746" width="310" height="48" rx="7"/><text x="22" y="775">Annotation feature item</text></g></a>
+<text x="364" y="775" class="predicate">proposed:annotation run</text>
+<a href="#subject-11"><g id="object-11"><title>Annotation run item ← Annotation feature item</title><rect x="620" y="746" width="330" height="48" rx="7"/><text x="632" y="775">Annotation run item</text></g></a>
+<path d="M320 836 H350 M596 836 H618" marker-end="url(#arrow)"/>
+<a href="#object-12"><g id="subject-12"><title>Candidate hit item → Annotation feature item</title><rect x="10" y="812" width="310" height="48" rx="7"/><text x="22" y="841">Candidate hit item</text></g></a>
+<text x="364" y="841" class="predicate">proposed:feature</text>
+<a href="#subject-12"><g id="object-12"><title>Annotation feature item ← Candidate hit item</title><rect x="620" y="812" width="330" height="48" rx="7"/><text x="632" y="841">Annotation feature item</text></g></a>
+<path d="M320 902 H350 M596 902 H618" marker-end="url(#arrow)"/>
+<a href="#object-13"><g id="subject-13"><title>Candidate hit item → Matched chemical item (QID)</title><rect x="10" y="878" width="310" height="48" rx="7"/><text x="22" y="907">Candidate hit item</text></g></a>
+<text x="364" y="907" class="predicate">proposed:candidate (not presence)</text>
+<a href="#subject-13"><g id="object-13"><title>Matched chemical item (QID) ← Candidate hit item</title><rect x="620" y="878" width="330" height="48" rx="7"/><text x="632" y="907">Matched chemical item (QID)</text></g></a>
+<path d="M320 968 H350 M596 968 H618" marker-end="url(#arrow)"/>
+<a href="#object-14"><g id="subject-14"><title>Chemical lookup record → Full InChIKey literal</title><rect x="10" y="944" width="310" height="48" rx="7"/><text x="22" y="973">Chemical lookup record</text></g></a>
+<text x="364" y="973" class="predicate">proposed:queried key</text>
+<a href="#subject-14"><g id="object-14"><title>Full InChIKey literal ← Chemical lookup record</title><rect x="620" y="944" width="330" height="48" rx="7"/><text x="632" y="973">Full InChIKey literal</text></g></a>
+<path d="M320 1034 H350 M596 1034 H618" marker-end="url(#arrow)"/>
+<a href="#object-15"><g id="subject-15"><title>Chemical match record → Matched chemical item (QID)</title><rect x="10" y="1010" width="310" height="48" rx="7"/><text x="22" y="1039">Chemical match record</text></g></a>
+<text x="364" y="1039" class="predicate">proposed:matched chemical</text>
+<a href="#subject-15"><g id="object-15"><title>Matched chemical item (QID) ← Chemical match record</title><rect x="620" y="1010" width="330" height="48" rx="7"/><text x="632" y="1039">Matched chemical item (QID)</text></g></a>
+<path d="M320 1100 H350 M596 1100 H618" marker-end="url(#arrow)"/>
+<a href="#object-16"><g id="subject-16"><title>CID source record → PubChem CID literal</title><rect x="10" y="1076" width="310" height="48" rx="7"/><text x="22" y="1105">CID source record</text></g></a>
+<text x="364" y="1105" class="predicate">proposed:recorded CID</text>
+<a href="#subject-16"><g id="object-16"><title>PubChem CID literal ← CID source record</title><rect x="620" y="1076" width="330" height="48" rx="7"/><text x="632" y="1105">PubChem CID literal</text></g></a>
+</svg>

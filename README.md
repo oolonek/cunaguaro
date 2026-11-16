@@ -24,4 +24,6 @@ The [technical guide](TECHNICAL.md) covers shared indexes, conservative reconcil
 
 For steps tied to one workstation's installed files and services, consult the ignored local guide `LOCAL.md` if it is available.
 
+The code is available under either the [MIT license](LICENSE-MIT) or the [Apache 2.0 license](LICENSE-APACHE).
+
 *Naming note: For new species names, we take inspiration from [colonizer](https://crates.io/crates/colonizer)'s `inspire` mode, which suggests names from the Catalogue of Life, rather than inventing each crate name ourselves.*

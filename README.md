@@ -2,7 +2,7 @@
 
 Cunaguaro connects organism names and possible chemicals in a research dataset to Wikidata records. It records uncertainty rather than guessing, and a matching record does not prove a chemical is present in a sample.
 
-The flock helps turn mass-spectrometry samples and measurements into traceable evidence for possible chemical matches, with an optional local knowledge-graph export. [Start with the flock overview](https://github.com/oolonek/flock-roadmap/blob/main/README.md) to see how the crates work together before following a technical guide.
+The flock helps turn mass-spectrometry samples and measurements into traceable evidence for possible chemical matches, with an optional local knowledge-graph export. [Start with the flock overview](https://github.com/oolonek/isla-gabriola-flock/blob/main/README.md) to see how the crates work together before following a technical guide.
 
 The name refers to the cunaguaro, *Leopardus pardalis* ([Wikidata Q33261](https://www.wikidata.org/wiki/Q33261); [Catalogue of Life 3T78D](https://www.catalogueoflife.org/data/taxon/3T78D)), the ocelot.
 

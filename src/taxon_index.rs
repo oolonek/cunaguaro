@@ -2,15 +2,14 @@
 
 use std::fs;
 use std::path::Path;
-use std::thread;
 use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
-use reqwest::blocking::{Client, Response};
-use reqwest::header::{ACCEPT, RETRY_AFTER};
-use reqwest::StatusCode;
+use reqwest::blocking::Client;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
+
+use crate::qlever::request;
 
 pub const QLEVER: &str = "https://qlever.dev/api/wikidata";
 const PROPERTIES: [&str; 5] = ["P225", "P10585", "P846", "P14607", "P3151"];
@@ -87,30 +86,6 @@ fn qid(uri: &str) -> Result<&str> {
     Ok(id)
 }
 
-fn request(client: &Client, endpoint: &str, query: &str, accept: &str, send: Option<&str>) -> Result<Response> {
-    for attempt in 0..=4 {
-        let mut request = client.get(endpoint).header(ACCEPT, accept).query(&[("query", query)]);
-        if let Some(send) = send {
-            request = request.query(&[("send", send)]);
-        }
-        let response = request.send().context("requesting QLever taxon index")?;
-        if matches!(response.status(), StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE)
-            && attempt < 4
-        {
-            let delay = response
-                .headers()
-                .get(RETRY_AFTER)
-                .and_then(|value| value.to_str().ok())
-                .and_then(|value| value.parse::<u64>().ok())
-                .unwrap_or(1 << attempt)
-                .min(8);
-            thread::sleep(Duration::from_secs(delay));
-            continue;
-        }
-        return response.error_for_status().context("QLever taxon index response");
-    }
-    unreachable!("the final request always returns a response or error")
-}
 
 fn counts(client: &Client, endpoint: &str) -> Result<[u64; 5]> {
     let response: Value = request(client, endpoint, COUNT, "application/sparql-results+json", None)?

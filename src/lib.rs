@@ -1,5 +1,6 @@
 //! Resolve Peregrino's distinct taxon names against a shared Wikidata snapshot.
 
+mod qlever;
 pub mod chemical;
 pub mod diagrams;
 pub mod proposal;

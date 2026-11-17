@@ -436,6 +436,48 @@ fn bulk_qlever_snapshot_resolves_current_keys_offline_without_losing_metadata_or
 }
 
 #[test]
+fn paged_qlever_export_preserves_pairs_split_across_pages_and_optional_cids() {
+    let file = fixture();
+    let count = json!({"results":{"bindings":[{"count":{"value":"3"}}]}}).to_string();
+    let first = format!(
+        "item,key,cid,name\nhttp://www.wikidata.org/entity/Q10,{A},101,alpha\n\
+         http://www.wikidata.org/entity/Q10,{A},102,alpha\n\
+         http://www.wikidata.org/entity/Q30,{C},,gamma\n"
+    );
+    let second = format!(
+        "item,key,cid,name\nhttp://www.wikidata.org/entity/Q30,{C},,gamma\n\
+         http://www.wikidata.org/entity/Q31,{C},303,\n"
+    );
+    let (url, worker) = server(vec![(200, count), (200, first), (200, second)]);
+    let snapshot = super::index::refresh_with_page_size(file.path(), &url, 3).unwrap();
+    assert_eq!(snapshot.pairs, 3);
+    let requests = worker.join().unwrap();
+    assert_eq!(requests.len(), 3);
+    assert!(requests[1].contains("LIMIT+3"));
+    assert!(requests[2].contains("Q30") && requests[2].contains("FILTER"));
+    let db = Connection::open(file.path()).unwrap();
+    let cids: Vec<String> = db
+        .prepare("SELECT pubchem_cid FROM wikidata_chemical_cids WHERE wikidata_qid='Q10' ORDER BY pubchem_cid")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(cids, ["101", "102"]);
+}
+
+#[test]
+fn chemical_snapshot_waits_for_rate_limited_qlever_page() {
+    let file = fixture();
+    let count = json!({"results":{"bindings":[{"count":{"value":"1"}}]}}).to_string();
+    let rows = format!("item,key,cid,name\nhttp://www.wikidata.org/entity/Q10,{A},101,alpha\n");
+    let (url, worker) = server(vec![(200, count), (429, String::new()), (200, rows)]);
+    assert_eq!(super::refresh_at(file.path(), &url).unwrap().pairs, 1);
+    let requests = worker.join().unwrap();
+    assert_eq!(requests.len(), 3);
+}
+
+#[test]
 fn incomplete_refresh_retains_prior_index_and_successful_refresh_rechecks_cached_keys() {
     let file = fixture();
     let count = |pairs: usize| json!({"results":{"bindings":[{"count":{"value":pairs.to_string()}}]}}).to_string();

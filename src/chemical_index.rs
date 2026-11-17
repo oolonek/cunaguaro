@@ -6,15 +6,14 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, ensure};
 use reqwest::blocking::Client;
-use reqwest::header::ACCEPT;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
 
 use super::{WikidataChemical, parse_qid};
+use crate::qlever::request;
 
 pub const QLEVER: &str = "https://qlever.dev/api/wikidata";
 const COUNT: &str = "PREFIX wdt: <http://www.wikidata.org/prop/direct/> SELECT (COUNT(*) AS ?count) WHERE { ?item wdt:P235 ?key }";
-const EXPORT: &str = "PREFIX wdt: <http://www.wikidata.org/prop/direct/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?key ?cid ?name WHERE { ?item wdt:P235 ?key . OPTIONAL { ?item wdt:P662 ?cid } OPTIONAL { ?item rdfs:label ?name . FILTER(LANG(?name) = \"en\") } }";
 const SCHEMA: &str = r#"
 CREATE TABLE IF NOT EXISTS wikidata_chemical_index (
     inchikey TEXT NOT NULL,
@@ -86,6 +85,11 @@ fn writable_index(path: &Path) -> Result<Connection> {
 }
 
 pub(super) fn refresh_at(database: &Path, endpoint: &str) -> Result<Snapshot> {
+    refresh_with_page_size(database, endpoint, 200_000)
+}
+
+pub(super) fn refresh_with_page_size(database: &Path, endpoint: &str, page_size: u64) -> Result<Snapshot> {
+    ensure!(page_size > 0, "QLever chemical page size must be positive");
     let mut db = writable_index(database)?;
     let client = Client::builder()
         .user_agent(
@@ -93,13 +97,9 @@ pub(super) fn refresh_at(database: &Path, endpoint: &str) -> Result<Snapshot> {
         )
         .timeout(Duration::from_secs(1800))
         .build()?;
-    let response: Value = client
-        .get(endpoint)
-        .header(ACCEPT, "application/sparql-results+json")
-        .query(&[("query", COUNT)])
-        .send()?
-        .error_for_status()?
-        .json()?;
+    let response: Value = request(&client, endpoint, COUNT, "application/sparql-results+json", None)?
+        .json()
+        .context("decoding QLever P235 count")?;
     let expected: u64 = response["results"]["bindings"][0]["count"]["value"]
         .as_str()
         .context("QLever count is missing")?
@@ -109,29 +109,15 @@ pub(super) fn refresh_at(database: &Path, endpoint: &str) -> Result<Snapshot> {
         expected > 0,
         "QLever returned an empty P235 index; refusing to replace snapshot"
     );
-    // QLever's HTTP `send` cap is separate from SPARQL LIMIT; without it
-    // the CSV response may silently omit rows even though the query succeeds.
-    // Optional P662 values can multiply rows, so allow ample headroom and
-    // still verify distinct QID/key pairs against the independent count.
-    let send_rows = expected.saturating_mul(8).max(1_000_000).to_string();
-    let response = client
-        .get(endpoint)
-        .header(ACCEPT, "text/csv")
-        .query(&[("query", EXPORT), ("send", send_rows.as_str())])
-        .send()?
-        .error_for_status()
-        .context("streaming QLever P235 export")?;
+    // QLever may end a successful multi-million-row CSV before all pairs
+    // have arrived. Bound each request, and re-read the boundary item so
+    // multiple keys/CIDs on that item cannot be split or silently lost.
+    // The independent count below still rejects incomplete or changing exports.
     let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
     tx.execute_batch(SCHEMA)?;
     let next = generation(&tx)?.unwrap_or(0) + 1;
     tx.execute("DELETE FROM wikidata_chemical_cids", [])?;
     tx.execute("DELETE FROM wikidata_chemical_index", [])?;
-    let mut csv = csv::Reader::from_reader(response);
-    ensure!(
-        csv.headers()?.iter().eq(["item", "key", "cid", "name"]),
-        "unexpected QLever CSV columns"
-    );
-    let mut row = csv::StringRecord::new();
     {
         let mut chemical = tx.prepare(
             "INSERT INTO wikidata_chemical_index(inchikey,wikidata_qid,name) VALUES(?1,?2,?3)
@@ -140,19 +126,55 @@ pub(super) fn refresh_at(database: &Path, endpoint: &str) -> Result<Snapshot> {
         let mut cid = tx.prepare(
             "INSERT OR IGNORE INTO wikidata_chemical_cids(inchikey,wikidata_qid,pubchem_cid) VALUES(?1,?2,?3)",
         )?;
-        while csv.read_record(&mut row)? {
-            let item = row.get(0).context("QLever row has no item")?;
-            let qid = parse_qid(item)?;
-            let key = row.get(1).context("QLever row has no InChIKey")?;
-            ensure!(
-                !key.is_empty(),
-                "QLever row has an empty P235 InChIKey for {qid}"
+        let mut cursor: Option<String> = None;
+        let send = page_size.to_string();
+        loop {
+            let after = match &cursor {
+                Some(last) => format!("FILTER(STR(?item) >= {})", serde_json::to_string(last)?),
+                None => String::new(),
+            };
+            let query = format!(
+                "PREFIX wdt: <http://www.wikidata.org/prop/direct/> \
+                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> \
+                 SELECT ?item ?key ?cid ?name WHERE {{ ?item wdt:P235 ?key . \
+                 FILTER(STRSTARTS(STR(?item), \"http://www.wikidata.org/entity/Q\")) \
+                 OPTIONAL {{ ?item wdt:P662 ?cid }} \
+                 OPTIONAL {{ ?item rdfs:label ?name . FILTER(LANG(?name) = \"en\") }} \
+                 {after} }} ORDER BY ?item ?key ?cid ?name LIMIT {page_size}"
             );
-            let name = row.get(3).filter(|value| !value.is_empty());
-            chemical.execute(params![key, qid, name])?;
-            if let Some(value) = row.get(2).filter(|value| !value.is_empty()) {
-                cid.execute(params![key, qid, value])?;
+            let response = request(&client, endpoint, &query, "text/csv", Some(&send))
+                .context("streaming QLever P235 export page")?;
+            let mut csv = csv::Reader::from_reader(response);
+            ensure!(
+                csv.headers()?.iter().eq(["item", "key", "cid", "name"]),
+                "unexpected QLever CSV columns"
+            );
+            let mut row = csv::StringRecord::new();
+            let mut received = 0_u64;
+            let mut last_item = String::new();
+            while csv.read_record(&mut row)? {
+                received += 1;
+                ensure!(received <= page_size, "QLever P235 page exceeded LIMIT {page_size}");
+                let item = row.get(0).context("QLever row has no item")?;
+                let qid = parse_qid(item)?;
+                let key = row.get(1).context("QLever row has no InChIKey")?;
+                ensure!(!key.is_empty(), "QLever row has an empty P235 InChIKey for {qid}");
+                let name = row.get(3).filter(|value| !value.is_empty());
+                chemical.execute(params![key, qid, name])?;
+                if let Some(value) = row.get(2).filter(|value| !value.is_empty()) {
+                    cid.execute(params![key, qid, value])?;
+                }
+                last_item.clear();
+                last_item.push_str(item);
             }
+            if received < page_size {
+                break;
+            }
+            ensure!(
+                cursor.as_deref() != Some(last_item.as_str()),
+                "QLever P235 has at least {page_size} rows on one item; previous snapshot retained"
+            );
+            cursor = Some(last_item);
         }
     }
     let pairs: u64 = tx.query_row("SELECT COUNT(*) FROM wikidata_chemical_index", [], |row| {

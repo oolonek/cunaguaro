@@ -2,7 +2,7 @@
 
 [Back to the Cunaguaro overview](README.md).
 
-Cunaguaro resolves Peregrino's distinct `taxa(id, name)` names by exact Wikidata [taxon name (P225)](https://www.wikidata.org/wiki/Property:P225). Mato's normal workflow builds **one shared taxon index** and **one shared chemical index** from [QLever's Wikidata endpoint](https://qlever.dev/wikidata), then reuses them read-only across jobs. Peregrino `ingest` creates the local taxa from the configured metadata column; blank/quality-control rows remain unlinked. Choose destinations in a private `mato/config/wikidata.local.toml` based on the portable `mato/config/wikidata.toml`. Pass that file to `mato indexes refresh --config`, and set `wikidata_config` in each private job TOML; see the [end-to-end procedure](#build-and-query-a-knowledge-graph-end-to-end). Standalone Cunaguaro CLI examples remain in the advanced sections below.
+Cunaguaro resolves Peregrino's distinct `taxa(id, name)` names by exact Wikidata [taxon name (P225)](https://www.wikidata.org/wiki/Property:P225). Mato's workflow builds **one shared taxon index** and **one shared chemical index** from [QLever's Wikidata endpoint](https://qlever.dev/wikidata) and reuses them read-only across jobs. Peregrino `ingest` creates local taxa from the selected metadata column; blank/quality-control rows remain unlinked. Set `workspace` and `[indexes]` paths in the **same private Mato job TOML** ([toy template](../mato/config/toy.toml), [MassIVE template](../mato/config/massive.toml)). `mato run --config config/toy.local.toml` prepares configured inputs and, with `[indexes].create_missing = true`, builds missing snapshots; the same applies to a prepared MassIVE job via `mato run --config config/massive.local.toml --topN 50`. Use `mato indexes refresh --config JOB.toml` to deliberately refresh snapshots. Standalone Cunaguaro commands are documented below.
 
 
 ## Shared taxon index and reconciliation
@@ -20,7 +20,9 @@ sqlite3 -header -column /path/to/job/flock.sqlite \
    GROUP BY t.id ORDER BY t.id'
 ```
 
-No match means “absent from this QLever snapshot under exact P225,” **not** that no taxon exists. Matching is conservative, not taxonomic-status reconciliation. A missing/incomplete shared index fails before updating the job DB; build it first. Set each job's `wikidata_config` to the same private shared-index TOML used by `indexes refresh`; `mato reset` does not delete shared indexes.
+No match means “absent from this QLever snapshot under exact P225,” **not** that no taxon exists. Matching is conservative, not taxonomic-status reconciliation. A missing/incomplete shared index fails before updating the job DB; set `[indexes].create_missing = true` to build missing snapshots during `mato run --config JOB.toml`, or deliberately use `mato indexes refresh --config JOB.toml`. An incomplete nonempty snapshot must be repaired explicitly, not silently replaced. Use the same workspace-root `[indexes]` destinations in each job config; `mato reset` does not delete shared indexes.
+
+If an interrupted `taxon-index` refresh leaves `taxa.sqlite-journal`, the previous committed snapshot needs SQLite rollback before this read-only lookup can use it. Stop the writer and run `mato indexes recover --config JOB.toml --only taxon` to recover and check the snapshot locally, **without** querying QLever or deleting the journal yourself. The same command with `--only chemical` handles an interrupted chemical snapshot. See [Mato's recovery instructions](../mato/TECHNICAL.md#run-a-job).
 
 ### Standalone taxon CLI (advanced)
 
@@ -55,7 +57,7 @@ cargo run --release --manifest-path cunaguaro/Cargo.toml -- chemical-enrich --db
 cargo run --release --manifest-path cunaguaro/Cargo.toml -- chemical-enrich --db /path/to/job2/flock.sqlite --index /path/to/shared/wikidata-chemicals.sqlite
 ```
 
-`chemical-index` streams the complete `wdt:P235` QID/full-InChIKey associations plus available `wdt:P662` PubChem CIDs and English labels, verifies the count, and replaces the shared snapshot **atomically**; `--from-db` copies **only** snapshot tables and needs no download. Its parent directory is created if absent. A truncated, malformed, or failed export/copy retains the previous complete snapshot. The command prints pair count, generation, and retrieval time; schedule refreshes weekly if desired, but do not run them alongside other writers of the index file. The retrieval time is **not** Wikidata's most recent edit: QLever's source may lag. Inspect `wikidata_chemical_snapshot` for source and timestamp. Job DBs store only their own matched candidates and the index generation used; they open the shared snapshot **read-only**. Replacing it increments the generation and invalidates each job's old matches/misses on its next `chemical-enrich`. An explicitly selected `--index` without a complete snapshot fails instead of silently falling back to WDQS. The index is external metadata, not evidence of chemical presence. Resetting a job DB does not delete the separate shared index. A locally hosted full Wikidata QLever endpoint can be selected with `--endpoint URL`.
+`chemical-index` pages the complete `wdt:P235` QID/full-InChIKey associations plus available `wdt:P662` PubChem CIDs and English labels, verifies the independent pair count, and replaces the shared snapshot **atomically**; `--from-db` copies **only** snapshot tables and needs no download. A truncated, malformed, or failed page/copy retains the previous complete snapshot. Public QLever can rate-limit requests; bounded waits honor numeric `Retry-After` before retrying a page. Its parent directory is created if absent. The command prints pair count, generation, and retrieval time; schedule refreshes weekly if desired, but do not run them alongside other writers of the index file. Retrieval time is **not** Wikidata's most recent edit: QLever may lag. Inspect `wikidata_chemical_snapshot` for source and timestamp. Job DBs store only their own matched candidates and the index generation used; they open the shared snapshot **read-only**. Replacing it increments the generation and invalidates each job's old matches/misses on its next `chemical-enrich`. An explicitly selected `--index` without a complete snapshot fails instead of silently falling back to WDQS. The index is external metadata, not evidence of chemical presence. Resetting a job DB does not delete the separate shared index. A locally hosted full Wikidata QLever endpoint can be selected with `--endpoint URL`.
 
 ## Local KG mapping proposal
 
@@ -65,48 +67,16 @@ The TSV columns are `source`, `key_json`, `status`, `reason`. It reports unresol
 
 ## Build and query a knowledge graph, end to end
 
-The executable graph comes from **Peregrino `kg export`**, not from `cunaguaro propose`: Cunaguaro builds shared Wikidata indexes, reconciles taxon and chemical QIDs into the job DB, and optionally reports the conceptual mapping. Mato orchestrates validation, ingest, Picoto, annotation and Cunaguaro. Use one index per Wikidata release/refresh and one **separate job DB per dataset**; a taxon/chemical index is not the job DB.
+The executable graph comes from **Peregrino `kg export`**, not `cunaguaro propose`. Cunaguaro builds Wikidata lookup snapshots and writes resolved taxon and chemical QIDs into a job DB; Mato runs the other species and can export and validate the graph for any configured dataset. A snapshot is **not** a job DB.
 
-General procedure, from the `mato` directory:
-
-1. Copy portable `config/wikidata.toml` to a private `config/wikidata.local.toml`. Choose writable, persistent, **distinct** paths for `indexes.taxon_index` and `indexes.chemical_index` outside any job DB or dataset. Copy `config/toy.toml` to `config/toy.local.toml` (or prepare another private job config); supply the actual Zenodo source, database, Picoto output, library and LOTUS locations. Keep outputs outside downloaded datasets and other jobs. Set the job's `wikidata_config` to the private shared-index TOML (paths in a job TOML resolve relative to its containing directory). Obtain raw spectra and library/LOTUS inputs first. For a different dataset, choose the ordered stages `["validate", "ingest", "enrich", "picoto", "register", "annotate", "chemical_enrich"]` as appropriate.
-2. Inspect the private job and index locations before any write. Build Mato, then refresh **both** shared snapshots once with `mato indexes refresh --config config/wikidata.local.toml`. Reuse them across jobs; later refresh one independently with `--only taxon` or `--only chemical`. Do not refresh an index alongside its writers. `inspect` reports index presence and paths; do not confuse the job database with a shared snapshot.
-3. Run Mato on the private toy job config. Inspect `datasets`, `taxon_resolutions`, `annotation_current_runs` and `chemical_lookups`; recorded annotation-file errors can leave a partial pipeline, so inspect those before exporting. For MassIVE top-N, choose a private copy of the MassIVE job config with a `top_n_root` isolated from production. `--topN 250` selects the first 250 metadata rows and their referenced raw files and uses `<top_n_root>/250/flock.sqlite` and `<top_n_root>/250/picoto`; pass the **same** `--topN 250` on `inspect`, `run` and every `show`. The portable MassIVE template may configure production stages differently from `top_n_stages`; inspect selected stages, paths and input files first.
-4. Optional: Cunaguaro `propose` inventories mappings and unresolved links; this report is **not** RDF. Discover the actual dataset ID in the job DB; do not assume it is 1. Peregrino `kg export` creates a new N-Quads file, refuses to overwrite existing files and checks registered file content. `peregrino kg validate --graph GRAPH` checks local SHACL shapes in Rust (optional; needs memory proportional to graph size), and `peregrino kg query` queries bounded graphs. For large graphs, [index the N-Quads in QLever](https://github.com/oolonek/peregrino/blob/master/kg/QLEVER.md) instead of loading them into in-process memory.
-
-Example using **paths you chose**, from `mato/`. Set `JOB_CONFIG` to your private job TOML, `WIKIDATA_CONFIG` to the same shared-index TOML referenced by that job's `wikidata_config`, and `DB` to the job DB shown by `inspect`. These commands exit if any required path variable is unset. Read inspected paths before running `run` or `indexes refresh`; those commands write to their configured destinations.
+From `mato/`, the toy route needs a single private copy of [the job config](../mato/config/toy.toml). Set only its `workspace` to a writable directory outside the checkout, then run:
 
 ```sh
-: "${JOB_CONFIG:?set path to your private Mato toy job TOML}"
-: "${WIKIDATA_CONFIG:?set path to your private shared-index TOML}"
-: "${DB:?set the job database path from JOB_CONFIG}"
-./target/release/mato inspect --config "$JOB_CONFIG"
-./target/release/mato indexes refresh --config "$WIKIDATA_CONFIG"
-./target/release/mato run --config "$JOB_CONFIG"
-./target/release/mato show datasets --config "$JOB_CONFIG"
-./target/release/mato show taxon_resolutions --config "$JOB_CONFIG"
-./target/release/mato show annotation_current_runs --config "$JOB_CONFIG"
-./target/release/mato show chemical_lookups --config "$JOB_CONFIG"
+test -e config/toy.local.toml || cp config/toy.toml config/toy.local.toml
+# Edit workspace in config/toy.local.toml.
+cargo run --release -- run --config config/toy.local.toml
 ```
 
-After checking those results, choose `DATASET_ID` from the `datasets` output and a **new** output directory `WORK` that does not already exist. Export and inspect it separately:
+`mato run` fetches and verifies the version-pinned Zenodo toy release and configured annotation references, builds missing shared Wikidata snapshots when `[indexes].create_missing = true`, runs the configured stages through `kg_export` and `kg_validate`, and creates a fresh N-Quads graph checked against local SHACL shapes. `[dataset.archive] doi` enables managed single-ZIP preparation; without it, the dataset must already exist. `[annotation.library_source]` and `[annotation.lotus_source]` provide verified URL/MD5 reference sources (the LOTUS CSV can use `compression = "gzip"`). Re-running reuses completed inputs and DB state, never resets existing jobs and never replaces a previous graph. [Mato's technical guide](../mato/TECHNICAL.md#example-download-the-zenodo-toy-dataset-and-export-a-kg) covers verification and file locations.
 
-```sh
-: "${DB:?set the inspected job database path}"
-: "${DATASET_ID:?select the ID from Mato show datasets}"
-: "${WORK:?set a new directory for this export}"
-mkdir -- "$WORK" || exit 1
-cargo run --release --manifest-path ../cunaguaro/Cargo.toml -- propose --db "$DB" \
-  --unresolved-log "$WORK/graph-unresolved.tsv" --svg "$WORK/graph.svg" \
-  --mermaid "$WORK/graph.mmd" > "$WORK/graph.md"
-cargo run --release --manifest-path ../peregrino/Cargo.toml -- kg export \
-  --db "$DB" --dataset-id "$DATASET_ID" --out "$WORK/graph.nq"
-cargo run --release --manifest-path ../peregrino/Cargo.toml -- kg query \
-  --graph "$WORK/graph.nq" --query ../peregrino/kg/taxonomic-evidence.rq
-```
-
-Optional Rust SHACL check for a graph that fits in memory: `cargo run --release --manifest-path ../peregrino/Cargo.toml -- kg validate --graph "$WORK/graph.nq"`. Peregrino uses Rudof's Rust SHACL library and [local shapes](https://github.com/oolonek/peregrino/blob/master/kg/shapes.ttl); the command exits nonzero on violations. For multi-gigabyte exports, this check and in-memory `kg query` need substantial RAM and time; indexing in QLever does not require either. The `qlever` CLI and Docker are optional for a persistent endpoint; follow the [QLever deployment guide](https://github.com/oolonek/peregrino/blob/master/kg/QLEVER.md) and choose a new index directory, free localhost port and container name. Avoid re-indexing an occupied directory or replacing a running service.
-
-For a MassIVE top-N full-stage rerun, restore the full `top_n_stages` list in the **same private TOML** and keep `--topN 250`; for a resume, shorten `top_n_stages` to the remaining stages, retain isolated outputs, and keep `--topN 250`. Do not automatically reset. Reset deletes the selected job DB and Picoto outputs: only consider it when intentionally discarding that N's outputs, after stopping writers and inspecting all paths. Sharing any job DB/Picoto pair with another job makes reset unsafe. Shared taxon and chemical indexes are not reset. A relative `top_n_root` resolves beside the job TOML, so moving the TOML can change the selected output location.
-
-The toy DOI is [10.5281/zenodo.10018264](https://doi.org/10.5281/zenodo.10018264); configure the extracted source path before using the example. `kg export` reads the job DB but creates a graph output; use a **new** `$WORK` for every export. A candidate hit with a QID is a ranked annotation, **not proof of chemical presence**. Local samples, analyses, features, spectra and hits receive local IRIs, while taxon/chemical QIDs link to Wikidata items; the export does not download Wikidata statements into the graph. See [Peregrino KG semantics and query recipes](https://github.com/oolonek/peregrino/blob/master/TECHNICAL.md#wikidata-linked-local-knowledge-graph) and the [QLever deployment guide](https://github.com/oolonek/peregrino/blob/master/kg/QLEVER.md) for persistent services.
+For MassIVE or another prepared dataset, use a **separate** DB/Picoto output pair in its private job TOML; set `[indexes].taxon_index` and `[indexes].chemical_index` to the same shared workspace-root paths. From `mato/`, run `mato run --config config/massive.local.toml --topN 50` for the first 50 metadata rows, with isolated DB/Picoto paths and a fresh graph under `[knowledge_graph].output_dir/50`. Configure `top_n_stages` to end with `chemical_enrich`, `kg_export`, `kg_validate`, and `[knowledge_graph].allow_partial = true` to export and validate despite recorded per-file annotation errors: the report remains `partial` and Mato exits nonzero. SHACL conformity says nothing about annotation completeness. Use `mato indexes refresh --config config/massive.local.toml` only when you deliberately need new Wikidata snapshots. For large N-Quads graphs, [index in QLever](https://github.com/oolonek/peregrino/blob/master/kg/QLEVER.md) instead of loading them into memory for local SPARQL and SHACL validation. A candidate chemical QID remains a ranked annotation, **not proof** of chemical presence in a sample.
